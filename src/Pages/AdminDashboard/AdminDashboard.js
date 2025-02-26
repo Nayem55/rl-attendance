@@ -6,7 +6,7 @@ import * as XLSX from "xlsx"; // Import the xlsx library
 
 const AdminDashboard = () => {
   const [reports, setReports] = useState([]);
-  const [group, setGroup] = useState("NMT");
+  const [group, setGroup] = useState("RL");
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
   const [selectedRole, setSelectedRole] = useState("SO");
@@ -284,9 +284,10 @@ const AdminDashboard = () => {
                 onChange={(e) => setGroup(e.target.value)}
                 className="border rounded px-2 py-1"
               >
-                <option value="NMT">NMT</option>
+                {/* <option value="NMT">NMT</option>
                 <option value="AMD">AMD</option>
-                <option value="GVI">GVI</option>
+                <option value="GVI">GVI</option> */}
+                <option value="RL">RL</option>
               </select>
             </div>
           )}

@@ -12,7 +12,7 @@ const TodaysReport = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [updatedStatuses, setUpdatedStatuses] = useState({});
-  const [group, setGroup] = useState("NMT");
+  const [group, setGroup] = useState("RL");
   const [selectedDate, setSelectedDate] = useState(
     dayjs().format("YYYY-MM-DD")
   );
@@ -273,9 +273,10 @@ const TodaysReport = () => {
                 onChange={(e) => setGroup(e.target.value)}
                 className="border rounded px-2 py-1"
               >
-                <option value="NMT">NMT</option>
+                {/* <option value="NMT">NMT</option>
                 <option value="AMD">AMD</option>
-                <option value="GVI">GVI</option>
+                <option value="GVI">GVI</option> */}
+                <option value="RL">RL</option>
               </select>
             </div>
           )}
