@@ -1,6 +1,6 @@
 {
-  "short_name": "GVI",
-  "name": "GVI Attendance",
+  "short_name": "RL",
+  "name": "RL Attendance",
   "icons": [
     {
       "src": "favicon.ico",
@@ -22,5 +22,5 @@
   "display": "standalone",
   "theme_color": "#000000",
   "background_color": "#ffffff",
-  "id": "gvi_attendance"
+  "id": "rl_attendance"
 }
