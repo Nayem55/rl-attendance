@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import application from "../Images/Application2.png";
 import admin from "../Images/admin-panel.png";
 import dashboard from "../Images/dashboard.png";
+import logo from "../Images/RL Logo.png"
 
 const Header = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -17,7 +18,7 @@ const Header = () => {
       {/* Header */}
       <div className="flex top-0 justify-between items-center p-4 bg-[#ffffff] shadow-md">
         <Link to="/">
-          <p className="text-[34px] font-bold px-10 text-[#002B54]">R<span className="text-[#F16F24]">L</span></p>
+          <img className="w-[140px]" src={logo} alt=""/>
         </Link>
         <div className="flex items-center gap-4">
           <button
