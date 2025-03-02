@@ -153,10 +153,10 @@ const CheckInPage = () => {
   };
 
   const handleCheckIn = async () => {
-    if (!isLocationEnabled) {
-      toast.error("Location is required. Please enable location to check-in.");
-      return;
-    }
+    // if (!isLocationEnabled) {
+    //   toast.error("Location is required. Please enable location to check-in.");
+    //   return;
+    // }
 
     setLoading(true);
     const user = JSON.parse(localStorage.getItem("user"));
@@ -319,34 +319,22 @@ const CheckInPage = () => {
       <div className="text-center">
         {user && user?.checkIn ? (
           <button
-            className={`w-full text-white py-2 px-4 rounded-lg mt-2 ${
-              !isLocationEnabled ? "bg-[#cccccc]" : "bg-[#002B54]"
-            }`}
+            className={`w-full text-white py-2 px-4 rounded-lg mt-2 bg-[#002B54]`}
             onClick={handleCheckOut}
-            disabled={loading || !isLocationEnabled}
+            disabled={loading}
           >
-            {loading
-              ? "Please wait..."
-              : !isLocationEnabled
-              ? "Please turn on your location"
-              : "Check Out"}
+            {loading ? "Please wait..." : "Check Out"}
           </button>
         ) : (
           <button
-            className={`w-full text-white py-2 px-4 rounded-lg mt-2 ${
-              !isLocationEnabled ? "bg-[#cccccc]" : "bg-[#002B54]"
-            }`}
+            className={`w-full text-white py-2 px-4 rounded-lg mt-2 bg-[#002B54]`}
             onClick={handleCheckIn}
-            disabled={loading || !isLocationEnabled}
+            disabled={loading}
           >
-            {loading
-              ? "Please wait..."
-              : !isLocationEnabled
-              ? "Please turn on your location"
-              : "Check In"}
+            {loading ? "Please wait..." : "Check In"}
           </button>
         )}
-        {!isLocationEnabled && (
+        {/* {!isLocationEnabled && (
           <button
             onClick={() => {
               fetchUserLocation(); // Re-fetch user location
@@ -364,7 +352,7 @@ const CheckInPage = () => {
               />
             </svg>
           </button>
-        )}
+        )} */}
       </div>
     </div>
   );

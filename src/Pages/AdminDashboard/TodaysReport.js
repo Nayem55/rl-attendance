@@ -298,14 +298,14 @@ const TodaysReport = () => {
               {storedUser?.role === "super admin" && (
                 <option value="super admin">Super Admin</option>
               )}
-              {(storedUser?.role === "super admin" ||
+              {(storedUser?.role === "super admin" || storedUser?.role === "SOM" ||
                 storedUser?.role === "RSM") && <option value="RSM">RSM</option>}
 
               {(storedUser?.role === "super admin" ||
                 storedUser?.role === "RSM" ||
                 storedUser?.role === "TSO") && <option value="TSO">TSO</option>}
 
-              {(storedUser?.role === "super admin" ||
+              {(storedUser?.role === "super admin" || storedUser?.role === "SOM" ||
                 storedUser?.role === "RSM" ||
                 storedUser?.role === "ASM") && <option value="ASM">ASM</option>}
 
