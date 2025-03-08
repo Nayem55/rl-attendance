@@ -12,6 +12,7 @@ const TodaysReport = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [updatedStatuses, setUpdatedStatuses] = useState({});
+  const [zone, setZone] = useState("");
   const [group, setGroup] = useState("RL");
   const [selectedDate, setSelectedDate] = useState(
     dayjs().format("YYYY-MM-DD")
@@ -31,9 +32,9 @@ const TodaysReport = () => {
       selectedDate,
       selectedRole,
       storedUser.group || (selectedRole === "super admin" ? "" : group),
-      storedUser.zone
+      storedUser.zone || (selectedRole === "super admin" ? "" : zone)
     );
-  }, [selectedDate, selectedRole, group]);
+  }, [selectedDate, selectedRole, group, zone]);
 
   const fetchReports = async (date, role, group, zone) => {
     setLoading(true);
@@ -283,6 +284,31 @@ const TodaysReport = () => {
             </div>
           )}
 
+          {(storedUser?.role === "super admin" ||
+            storedUser?.role === "RSM") && (
+            <div className="mb-4 w-[100%]">
+              <label className="block text-gray-700 font-bold mb-2">
+                Filter by Zone:
+              </label>
+              <select
+                value={zone}
+                onChange={(e) => setZone(e.target.value)}
+                className="border rounded px-2 py-1"
+              >
+                <option value="">Select Zone</option>
+                <option value="DHAKA-01-ZONE-01">DHAKA-01-ZONE-01</option>
+                <option value="DHAKA-02-ZONE-03">DHAKA-02-ZONE-03</option>
+                <option value="DHAKA-03-ZONE-03">DHAKA-03-ZONE-03</option>
+                <option value="KHULNA-ZONE-01">KHULNA-ZONE-01</option>
+                <option value="COMILLA-ZONE-03">COMILLA-ZONE-03</option>
+                <option value="CHITTAGONG-ZONE-03">CHITTAGONG-ZONE-03</option>
+                <option value="RANGPUR-ZONE-01">RANGPUR-ZONE-01</option>
+                <option value="BARISAL-ZONE-03">BARISAL-ZONE-03</option>
+                <option value="BOGURA-ZONE-01">BOGURA-ZONE-01</option>
+                <option value="MYMENSINGH-ZONE-01">MYMENSINGH-ZONE-01</option>
+              </select>
+            </div>
+          )}
           <div className="mb-4 w-[100%]">
             <label className="block text-gray-700 font-bold mb-2">
               Select Role:
@@ -298,14 +324,16 @@ const TodaysReport = () => {
               {storedUser?.role === "super admin" && (
                 <option value="super admin">Super Admin</option>
               )}
-              {(storedUser?.role === "super admin" || storedUser?.role === "SOM" ||
+              {(storedUser?.role === "super admin" ||
+                storedUser?.role === "SOM" ||
                 storedUser?.role === "RSM") && <option value="RSM">RSM</option>}
 
               {(storedUser?.role === "super admin" ||
                 storedUser?.role === "RSM" ||
                 storedUser?.role === "TSO") && <option value="TSO">TSO</option>}
 
-              {(storedUser?.role === "super admin" || storedUser?.role === "SOM" ||
+              {(storedUser?.role === "super admin" ||
+                storedUser?.role === "SOM" ||
                 storedUser?.role === "RSM" ||
                 storedUser?.role === "ASM") && <option value="ASM">ASM</option>}
 
