@@ -3,9 +3,10 @@ import dayjs from "dayjs";
 import axios from "axios";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
+import * as XLSX from "xlsx"; // <-- Import XLSX
 
 const ViewReport = () => {
-  const { userId } = useParams(); // Fetch userId from route params
+  const { userId } = useParams();
   const [userName, setUserName] = useState("");
   const [records, setRecords] = useState([]);
   const [updatedStatuses, setUpdatedStatuses] = useState({});
@@ -36,43 +37,40 @@ const ViewReport = () => {
       );
       setUserName(userResponse.data.name);
 
-      // Fetch check-ins
       const checkInsResponse = await axios.get(
         `https://attendance-app-server-blue.vercel.app/api/checkins/${userId}`,
         {
           params: { month: monthNumber, year: year },
         }
       );
-      const checkIns = checkInsResponse.data;
-
-      // Fetch check-outs
       const checkOutsResponse = await axios.get(
         `https://attendance-app-server-blue.vercel.app/api/checkouts/${userId}`,
         {
           params: { month: monthNumber, year: year },
         }
       );
+
+      const checkIns = checkInsResponse.data;
       const checkOuts = checkOutsResponse.data;
 
-      // Combine check-ins and check-outs based on date
       const combinedRecords = checkIns.map((checkIn) => {
         const checkOut = checkOuts.find(
           (co) =>
             dayjs(co.time).isSame(checkIn.time, "day") &&
-            dayjs(co.time).isAfter(checkIn.time) // Ensure check-out time is after check-in time
+            dayjs(co.time).isAfter(checkIn.time)
         );
 
         return {
           checkInId: checkIn._id,
           date: dayjs(checkIn?.time).format("DD MMMM YYYY"),
           checkInTime: dayjs(checkIn?.time).format("hh:mm A") || "N/A",
-          checkInLocation: checkIn?.location,
-          checkOutLocation: checkOut?.location,
           checkInNote: checkIn?.note || "N/A",
+          checkInLocation: checkIn?.location,
           checkOutTime: checkOut?.time
             ? dayjs(checkOut?.time).format("hh:mm A")
             : "N/A",
           checkOutNote: checkOut?.note || "N/A",
+          checkOutLocation: checkOut?.location || "N/A",
           status: checkIn.status,
         };
       });
@@ -99,7 +97,6 @@ const ViewReport = () => {
 
   const saveStatus = async (checkInId) => {
     const newStatus = updatedStatuses[checkInId];
-
     if (!newStatus) {
       toast.error("Please select a status to update.");
       return;
@@ -119,18 +116,37 @@ const ViewReport = () => {
             : report
         )
       );
-      // fetchUserReport(selectedMonth);
     } catch (error) {
       console.error("Error updating status:", error);
       toast.error("Failed to update status. Please try again.");
     }
   };
 
+  const exportToExcel = () => {
+    const worksheetData = records.map((record) => ({
+      Username: userName,
+      Date: record.date,
+      "Check-In Time": record.checkInTime,
+      "Check-In Note": record.checkInNote,
+      "Check-In Location": record.checkInLocation,
+      "Check-Out Time": record.checkOutTime,
+      "Check-Out Note": record.checkOutNote,
+      "Check-Out Location": record.checkOutLocation,
+      Status: record.status,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+
+    XLSX.writeFile(workbook, `${userName}-Monthly-Report.xlsx`);
+  };
+
   return (
     <div className="flex">
-      {/* Side Drawer */}
+      {/* Sidebar */}
       <div
-        className={`fixed md:relative z-20 bg-gray-800 text-white w-64 h-screen transform  ${
+        className={`fixed md:relative z-20 bg-gray-800 text-white w-64 h-screen transform ${
           isDrawerOpen ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0 transition-transform duration-300`}
       >
@@ -144,37 +160,12 @@ const ViewReport = () => {
           </button>
         </div>
         <nav className="flex flex-col p-4 space-y-2">
-          <Link
-            to="/admin/today-report"
-            className="px-4 py-2 rounded hover:bg-gray-700 focus:bg-gray-700"
-          >
-            Today's Report
-          </Link>
-          <Link
-            to="/admin/monthly-summary"
-            className="px-4 py-2 rounded hover:bg-gray-700 focus:bg-gray-700"
-          >
-            Monthly Summary
-          </Link>
-          <Link
-            to="/admin/monthly-details"
-            className="px-4 py-2 rounded hover:bg-gray-700 focus:bg-gray-700"
-          >
-            Monthly Details
-          </Link>
-          <Link
-            to="/admin/applications"
-            className="px-4 py-2 rounded hover:bg-gray-700 focus:bg-gray-700"
-          >
-            Leave Requests
-          </Link>
+          <Link to="/admin/today-report" className="hover:bg-gray-700 px-4 py-2 rounded">Today's Report</Link>
+          <Link to="/admin/monthly-summary" className="hover:bg-gray-700 px-4 py-2 rounded">Monthly Summary</Link>
+          <Link to="/admin/monthly-details" className="hover:bg-gray-700 px-4 py-2 rounded">Monthly Details</Link>
+          <Link to="/admin/applications" className="hover:bg-gray-700 px-4 py-2 rounded">Leave Requests</Link>
           {storedUser?.role === "super admin" && (
-            <Link
-              to="/admin/user"
-              className="px-4 py-2 rounded hover:bg-gray-700 focus:bg-gray-700 flex items-center"
-            >
-              Users
-            </Link>
+            <Link to="/admin/user" className="hover:bg-gray-700 px-4 py-2 rounded">Users</Link>
           )}
         </nav>
       </div>
@@ -188,17 +179,25 @@ const ViewReport = () => {
           {isDrawerOpen ? "Close Menu" : "Open Menu"}
         </button>
 
-        <h1 className="text-xl font-bold mb-4">
-          Monthly Report for {userName}
-        </h1>
-        <div className="mb-4">
-          <label className="mr-2 font-semibold">Select Month:</label>
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={handleMonthChange}
-            className="border rounded px-2 py-1"
-          />
+        <h1 className="text-xl font-bold mb-4">Monthly Report for {userName}</h1>
+
+        <div className="flex flex-wrap gap-4 mb-4 items-center">
+          <div>
+            <label className="mr-2 font-semibold">Select Month:</label>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={handleMonthChange}
+              className="border rounded px-2 py-1"
+            />
+          </div>
+
+          <button
+            onClick={exportToExcel}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+          >
+            Export to Excel
+          </button>
         </div>
 
         {loading ? (
@@ -210,74 +209,41 @@ const ViewReport = () => {
             <table className="w-full border-collapse border border-gray-300">
               <thead>
                 <tr className="bg-gray-200">
-                  <th className="border border-gray-300 px-4 py-2">Username</th>
-                  <th className="border border-gray-300 px-4 py-2">Date</th>
-                  <th className="border border-gray-300 px-4 py-2">
-                    Check-In Time
-                  </th>
-                  <th className="border border-gray-300 px-4 py-2">
-                    Check-In Note
-                  </th>
-                  <th className="border border-gray-300 px-4 py-2">
-                    Check-In Location
-                  </th>
-                  <th className="border border-gray-300 px-4 py-2">
-                    Check-Out Time
-                  </th>
-                  <th className="border border-gray-300 px-4 py-2">
-                    Check-Out Note
-                  </th>
-                  <th className="border border-gray-300 px-4 py-2">
-                    Check-Out Location
-                  </th>
-                  <th className="border border-gray-300 px-4 py-2">Status</th>
-                  <th className="border border-gray-300 px-4 py-2">
-                    Update Status
-                  </th>
+                  <th className="border px-4 py-2">Username</th>
+                  <th className="border px-4 py-2">Date</th>
+                  <th className="border px-4 py-2">Check-In Time</th>
+                  <th className="border px-4 py-2">Check-In Note</th>
+                  <th className="border px-4 py-2">Check-In Location</th>
+                  <th className="border px-4 py-2">Check-Out Time</th>
+                  <th className="border px-4 py-2">Check-Out Note</th>
+                  <th className="border px-4 py-2">Check-Out Location</th>
+                  <th className="border px-4 py-2">Status</th>
+                  <th className="border px-4 py-2">Update Status</th>
                 </tr>
               </thead>
               <tbody>
                 {records.map((record, index) => (
                   <tr key={index} className="text-center">
-                    <td className="border border-gray-300 px-4 py-2">
-                      {userName}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {record.date}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {record.checkInTime}
-                    </td>
-
-                    <td className="border border-gray-300 px-4 py-2">
-                      {record.checkInNote}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {record.checkInLocation}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {record.checkOutTime || "N/A"}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {record.checkOutNote || "N/A"}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {record.checkOutLocation || "N/A"}
-                    </td>
+                    <td className="border px-4 py-2">{userName}</td>
+                    <td className="border px-4 py-2">{record.date}</td>
+                    <td className="border px-4 py-2">{record.checkInTime}</td>
+                    <td className="border px-4 py-2">{record.checkInNote}</td>
+                    <td className="border px-4 py-2">{record.checkInLocation}</td>
+                    <td className="border px-4 py-2">{record.checkOutTime}</td>
+                    <td className="border px-4 py-2">{record.checkOutNote}</td>
+                    <td className="border px-4 py-2">{record.checkOutLocation}</td>
                     <td
-                      className={`border border-gray-300 font-bold px-4 py-2 ${
+                      className={`border font-bold px-4 py-2 ${
                         record.status === "Pending"
                           ? "text-[#002B54]"
-                          : record.status === "Rejected" ||
-                            record.status === "Late" ||
-                            record.status === "Absent"
+                          : ["Rejected", "Late", "Absent"].includes(record.status)
                           ? "text-[#B7050E]"
                           : "text-[#0DC143]"
                       }`}
                     >
                       {record.status}
                     </td>
-                    <td className="border border-gray-300 px-4 py-2 flex gap-4 items-center">
+                    <td className="border px-4 py-2 flex gap-4 items-center">
                       <select
                         className="px-2 py-1"
                         value={updatedStatuses[record.checkInId] || ""}
@@ -295,7 +261,7 @@ const ViewReport = () => {
                       </select>
                       <button
                         onClick={() => saveStatus(record.checkInId)}
-                        className="bg-[#1F2937] hover:bg-[#002B54] ease-in-out duration-200 text-white px-2 py-1 rounded"
+                        className="bg-[#1F2937] hover:bg-[#002B54] text-white px-2 py-1 rounded"
                       >
                         Save
                       </button>
