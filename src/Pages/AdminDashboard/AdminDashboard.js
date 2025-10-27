@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
-import * as XLSX from "xlsx"; // Import the xlsx library
+import * as XLSX from "xlsx";
 
 const AdminDashboard = () => {
   const [reports, setReports] = useState([]);
@@ -10,6 +10,8 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
   const [selectedRole, setSelectedRole] = useState("SO");
+  const [selectedZone, setSelectedZone] = useState(""); // <-- NEW
+  const [zones, setZones] = useState([]); // <-- NEW
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [error, setError] = useState(null);
   const [totalWorkingDays, setTotalWorkingDays] = useState(null);
@@ -18,23 +20,61 @@ const AdminDashboard = () => {
   const storedUser = JSON.parse(localStorage.getItem("user"));
   const dayCount = dayjs(selectedMonth).daysInMonth();
 
+  /* ------------------------------------------------------------------ */
+  /*  Redirect to login if no user in localStorage                      */
+  /* ------------------------------------------------------------------ */
   useEffect(() => {
     if (!storedUser) {
       navigate("/login");
     }
-  }, []);
+  }, [navigate]);
 
+  /* ------------------------------------------------------------------ */
+  /*  Fetch working-days, reports & pending requests                    */
+  /* ------------------------------------------------------------------ */
   useEffect(() => {
     fetchWorkingDays(selectedMonth);
     fetchUserReports(
       selectedMonth,
       selectedRole,
       storedUser.group || (selectedRole === "super admin" ? "" : group),
-      storedUser.zone
+      storedUser.zone,
+      selectedZone
     );
     fetchPendingRequest();
-  }, [selectedMonth, selectedRole, group]);
+  }, [selectedMonth, selectedRole, group, selectedZone]); // <-- added selectedZone
 
+  /* ------------------------------------------------------------------ */
+  /*  Fetch unique zones (once) – you can also hard-code them          */
+  /* ------------------------------------------------------------------ */
+  useEffect(() => {
+    const loadZones = async () => {
+      try {
+        const res = await axios.get(
+          `https://attendance-app-server-blue.vercel.app/getAllUser`
+        );
+
+        const uniqueZones = [
+          ...new Set(
+            res.data
+              .map((u) => u.zone)
+              .filter(Boolean)
+              .filter((z) => /zone/i.test(z)) // <-- ONLY ZONES WITH "zone"
+          ),
+        ];
+
+        setZones(uniqueZones);
+      } catch (err) {
+        console.error("Failed to load zones", err);
+      }
+    };
+
+    if (storedUser?.role === "super admin") loadZones();
+  }, [storedUser?.role]);
+
+  /* ------------------------------------------------------------------ */
+  /*  API helpers                                                       */
+  /* ------------------------------------------------------------------ */
   const fetchPendingRequest = async () => {
     try {
       const response = await axios.get(
@@ -51,12 +91,9 @@ const AdminDashboard = () => {
     try {
       const response = await axios.get(
         `https://attendance-app-server-blue.vercel.app/api/workingdays`,
-        {
-          params: { month },
-        }
+        { params: { month } }
       );
-      const { workingDays } = response.data;
-      setTotalWorkingDays(workingDays);
+      setTotalWorkingDays(response.data.workingDays);
     } catch (error) {
       console.error("Error fetching working days:", error);
       setTotalWorkingDays(null);
@@ -67,12 +104,9 @@ const AdminDashboard = () => {
     try {
       const response = await axios.get(
         `https://attendance-app-server-blue.vercel.app/api/leave-requests/user/${userId}/monthly`,
-        {
-          params: { month, year },
-        }
+        { params: { month, year } }
       );
-      const { leaveDays } = response.data;
-      return leaveDays || 0;
+      return response.data.leaveDays || 0;
     } catch (error) {
       console.error(
         `Error fetching approved leaves for user ${userId}:`,
@@ -82,15 +116,26 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchUserReports = async (month, role, group, zone) => {
+  const fetchUserReports = async (
+    month,
+    role,
+    group,
+    userZone,
+    zoneFilter = ""
+  ) => {
     setLoading(true);
     setError(null);
     try {
       const [year, monthNumber] = month.split("-");
+
       const usersResponse = await axios.get(
         `https://attendance-app-server-blue.vercel.app/getAllUser`,
         {
-          params: { role, group, zone },
+          params: {
+            role,
+            group,
+            zone: storedUser?.role === "super admin" ? zoneFilter : userZone,
+          },
         }
       );
       const users = usersResponse.data;
@@ -99,15 +144,11 @@ const AdminDashboard = () => {
         users.map(async (user) => {
           const checkInsResponse = await axios.get(
             `https://attendance-app-server-blue.vercel.app/api/checkins/${user._id}`,
-            {
-              params: { month: monthNumber, year: year },
-            }
+            { params: { month: monthNumber, year } }
           );
           const checkOutsResponse = await axios.get(
             `https://attendance-app-server-blue.vercel.app/api/checkouts/${user._id}`,
-            {
-              params: { month: monthNumber, year: year },
-            }
+            { params: { month: monthNumber, year } }
           );
 
           const checkIns = checkInsResponse.data;
@@ -115,10 +156,10 @@ const AdminDashboard = () => {
           const totalCheckIns = checkIns.length;
 
           const lateCheckInsCount = checkIns.filter(
-            (checkin) => checkin.status === "Late"
+            (c) => c.status === "Late"
           ).length;
           const lateCheckOutsCount = checkOuts.filter(
-            (checkin) => checkin.status === "Overtime"
+            (c) => c.status === "Overtime"
           ).length;
 
           const approvedLeaveDays = await fetchApprovedLeaves(
@@ -137,11 +178,12 @@ const AdminDashboard = () => {
             lateCheckOuts: lateCheckOutsCount,
             approvedLeaves: approvedLeaveDays,
             month: monthNumber,
-            year: year,
+            year,
             zone: user.zone,
           };
         })
       );
+
       setReports(reportsData);
     } catch (error) {
       console.error("Error fetching reports:", error);
@@ -151,15 +193,16 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleMonthChange = (event) => {
-    setSelectedMonth(event.target.value);
-  };
+  /* ------------------------------------------------------------------ */
+  /*  Handlers                                                          */
+  /* ------------------------------------------------------------------ */
+  const handleMonthChange = (e) => setSelectedMonth(e.target.value);
+  const handleRoleChange = (e) => setSelectedRole(e.target.value);
+  const handleZoneChange = (e) => setSelectedZone(e.target.value); // <-- NEW
 
-  const handleRoleChange = (event) => {
-    setSelectedRole(event.target.value);
-  };
-
-  // Function to export the report to Excel
+  /* ------------------------------------------------------------------ */
+  /*  Export to Excel                                                   */
+  /* ------------------------------------------------------------------ */
   const exportToExcel = () => {
     const worksheetData = reports.map((report) => ({
       Name: report.username,
@@ -191,14 +234,15 @@ const AdminDashboard = () => {
     const worksheet = XLSX.utils.json_to_sheet(worksheetData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Monthly Report");
-
-    // Generate Excel file and trigger download
     XLSX.writeFile(workbook, `Monthly_Report_${selectedMonth}.xlsx`);
   };
 
+  /* ------------------------------------------------------------------ */
+  /*  Render                                                            */
+  /* ------------------------------------------------------------------ */
   return (
     <div className="flex">
-      {/* Side Drawer */}
+      {/* ---------- Side Drawer ---------- */}
       <div
         className={`fixed md:relative z-20 bg-gray-800 text-white w-64 h-screen transform ${
           isDrawerOpen ? "translate-x-0" : "-translate-x-full"
@@ -249,7 +293,7 @@ const AdminDashboard = () => {
         </nav>
       </div>
 
-      {/* Main Content */}
+      {/* ---------- Main Content ---------- */}
       <div className="flex-1 min-h-screen p-4 md:p-6 bg-gray-100">
         <button
           onClick={() => setIsDrawerOpen(!isDrawerOpen)}
@@ -268,7 +312,9 @@ const AdminDashboard = () => {
           Export Report
         </button>
 
-        <div className="mb-4 flex items-center space-x-4">
+        {/* ---------- Filters ---------- */}
+        <div className="mb-4 flex flex-wrap items-center gap-4">
+          {/* Month */}
           <div>
             <label className="mr-2 font-semibold">Select Month:</label>
             <input
@@ -278,6 +324,8 @@ const AdminDashboard = () => {
               className="border rounded px-2 py-1"
             />
           </div>
+
+          {/* Group (super-admin only) */}
           {storedUser?.role === "super admin" && (
             <div>
               <label className="mr-2 font-semibold">Filter by Group:</label>
@@ -286,14 +334,13 @@ const AdminDashboard = () => {
                 onChange={(e) => setGroup(e.target.value)}
                 className="border rounded px-2 py-1"
               >
-                {/* <option value="NMT">NMT</option>
-                <option value="AMD">AMD</option>
-                <option value="GVI">GVI</option> */}
                 <option value="RL">RL</option>
+                {/* add more groups if needed */}
               </select>
             </div>
           )}
 
+          {/* Role */}
           <div>
             <label className="mr-2 font-semibold">Filter by User Role:</label>
             <select
@@ -321,8 +368,28 @@ const AdminDashboard = () => {
               <option value="SO">SO</option>
             </select>
           </div>
+
+          {/* ----- NEW ZONE FILTER (super-admin only) ----- */}
+          {storedUser?.role === "super admin" && (
+            <div>
+              <label className="mr-2 font-semibold">Filter by Zone:</label>
+              <select
+                value={selectedZone}
+                onChange={handleZoneChange}
+                className="border rounded px-2 py-1"
+              >
+                <option value="">All Zones</option>
+                {zones.map((z) => (
+                  <option key={z} value={z}>
+                    {z}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
+        {/* ---------- Table / Loading / Error ---------- */}
         {loading ? (
           <p>Loading...</p>
         ) : error ? (
@@ -366,8 +433,8 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {reports.map((report, index) => (
-                  <tr key={index} className="text-center">
+                {reports.map((report, idx) => (
+                  <tr key={idx} className="text-center">
                     <td className="border border-gray-300 px-4 py-2">
                       {report.username}
                     </td>
@@ -390,7 +457,7 @@ const AdminDashboard = () => {
                     <td className="border border-gray-300 px-4 py-2">
                       {report.approvedLeaves}
                     </td>
-                    <td className="border border-gray-300  bg-red-300 px-4 py-2">
+                    <td className="border border-gray-300 bg-red-300 px-4 py-2">
                       {totalWorkingDays -
                         report.totalCheckIns -
                         report.approvedLeaves >
@@ -411,7 +478,7 @@ const AdminDashboard = () => {
                     <td className="border border-gray-300 bg-red-300 px-4 py-2">
                       {report.lateCheckIns}
                     </td>
-                    <td className="border border-gray-300 bg-[#9BB97F]  px-4 py-2">
+                    <td className="border border-gray-300 bg-[#9BB97F] px-4 py-2">
                       {report.lateCheckOuts}
                     </td>
                     <td className="border border-gray-300 px-4 py-2">

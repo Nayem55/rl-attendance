@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
-import * as XLSX from "xlsx"; // Import the xlsx library
+import * as XLSX from "xlsx";
 
 const DetailedSummary = () => {
   const [reports, setReports] = useState([]);
@@ -10,6 +10,8 @@ const DetailedSummary = () => {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
   const [selectedRole, setSelectedRole] = useState("SO");
+  const [selectedZone, setSelectedZone] = useState("");   // NEW: Zone filter state
+  const [zones, setZones] = useState([]);                 // NEW: List of zones
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [error, setError] = useState(null);
   const [totalWorkingDays, setTotalWorkingDays] = useState(null);
@@ -18,23 +20,61 @@ const DetailedSummary = () => {
   const storedUser = JSON.parse(localStorage.getItem("user"));
   const dayCount = dayjs(selectedMonth).daysInMonth();
 
+  /* ------------------------------------------------------------------ */
+  /*  Redirect to login if no user in localStorage                      */
+  /* ------------------------------------------------------------------ */
   useEffect(() => {
     if (!storedUser) {
       navigate("/login");
     }
-  }, []);
+  }, [navigate]);
 
+  /* ------------------------------------------------------------------ */
+  /*  Fetch working-days, reports & pending requests                    */
+  /* ------------------------------------------------------------------ */
   useEffect(() => {
     fetchWorkingDays(selectedMonth);
     fetchUserReports(
       selectedMonth,
       selectedRole,
       storedUser.group || (selectedRole === "super admin" ? "" : group),
-      storedUser.zone
+      storedUser.zone,
+      selectedZone
     );
     fetchPendingRequest();
-  }, [selectedMonth, selectedRole, group]);
+  }, [selectedMonth, selectedRole, group, selectedZone]); // Added selectedZone
 
+  /* ------------------------------------------------------------------ */
+  /*  Fetch unique zones (once) – only those containing "zone"          */
+  /* ------------------------------------------------------------------ */
+  useEffect(() => {
+    const loadZones = async () => {
+      try {
+        const res = await axios.get(
+          `https://attendance-app-server-blue.vercel.app/getAllUser`
+        );
+
+        const uniqueZones = [
+          ...new Set(
+            res.data
+              .map((u) => u.zone)
+              .filter(Boolean)
+              .filter((z) => /zone/i.test(z)) // Only zones with "zone" in name
+          ),
+        ];
+
+        setZones(uniqueZones);
+      } catch (err) {
+        console.error("Failed to load zones", err);
+      }
+    };
+
+    if (storedUser?.role === "super admin") loadZones();
+  }, [storedUser?.role]);
+
+  /* ------------------------------------------------------------------ */
+  /*  API helpers                                                       */
+  /* ------------------------------------------------------------------ */
   const fetchPendingRequest = async () => {
     try {
       const response = await axios.get(
@@ -51,12 +91,9 @@ const DetailedSummary = () => {
     try {
       const response = await axios.get(
         `https://attendance-app-server-blue.vercel.app/api/workingdays`,
-        {
-          params: { month },
-        }
+        { params: { month } }
       );
-      const { workingDays } = response.data;
-      setTotalWorkingDays(workingDays);
+      setTotalWorkingDays(response.data.workingDays);
     } catch (error) {
       console.error("Error fetching working days:", error);
       setTotalWorkingDays(null);
@@ -67,30 +104,35 @@ const DetailedSummary = () => {
     try {
       const response = await axios.get(
         `https://attendance-app-server-blue.vercel.app/api/leave-requests/user/${userId}/monthly`,
-        {
-          params: { month, year },
-        }
+        { params: { month, year } }
       );
-      const { leaveDays } = response.data;
-      return leaveDays || 0;
+      return response.data.leaveDays || 0;
     } catch (error) {
-      console.error(
-        `Error fetching approved leaves for user ${userId}:`,
-        error
-      );
+      console.error(`Error fetching approved leaves for user ${userId}:`, error);
       return 0;
     }
   };
 
-  const fetchUserReports = async (month, role, group, zone) => {
+  const fetchUserReports = async (
+    month,
+    role,
+    group,
+    userZone,
+    zoneFilter = ""
+  ) => {
     setLoading(true);
     setError(null);
     try {
       const [year, monthNumber] = month.split("-");
+
       const usersResponse = await axios.get(
         `https://attendance-app-server-blue.vercel.app/getAllUser`,
         {
-          params: { role, group, zone },
+          params: {
+            role,
+            group,
+            zone: storedUser?.role === "super admin" ? zoneFilter : userZone,
+          },
         }
       );
       const users = usersResponse.data;
@@ -99,32 +141,25 @@ const DetailedSummary = () => {
         users.map(async (user) => {
           const checkInsResponse = await axios.get(
             `https://attendance-app-server-blue.vercel.app/api/checkins/${user._id}`,
-            {
-              params: { month: monthNumber, year: year },
-            }
+            { params: { month: monthNumber, year } }
           );
           const checkOutsResponse = await axios.get(
             `https://attendance-app-server-blue.vercel.app/api/checkouts/${user._id}`,
-            {
-              params: { month: monthNumber, year: year },
-            }
+            { params: { month: monthNumber, year } }
           );
 
           const checkIns = checkInsResponse.data;
           const checkOuts = checkOutsResponse.data;
 
-          // Create an object to store daily check-in/check-out times
+          // Build daily in/out times
           const dailyTimes = {};
           for (let day = 1; day <= dayCount; day++) {
-            const date = `${year}-${monthNumber}-${String(day).padStart(
-              2,
-              "0"
-            )}`;
+            const date = `${year}-${monthNumber}-${String(day).padStart(2, "0")}`;
             const checkIn = checkIns.find(
-              (checkin) => dayjs(checkin.time).format("YYYY-MM-DD") === date
+              (c) => dayjs(c.time).format("YYYY-MM-DD") === date
             );
             const checkOut = checkOuts.find(
-              (checkout) => dayjs(checkout.time).format("YYYY-MM-DD") === date
+              (c) => dayjs(c.time).format("YYYY-MM-DD") === date
             );
 
             dailyTimes[day] = {
@@ -136,12 +171,13 @@ const DetailedSummary = () => {
           return {
             username: user.name,
             number: user.number,
-            outlet: user.outlet || "N/A", // Assuming outlet is part of user data
+            outlet: user.outlet || "N/A",
             zone: user.zone,
             dailyTimes,
           };
         })
       );
+
       setReports(reportsData);
     } catch (error) {
       console.error("Error fetching reports:", error);
@@ -151,34 +187,35 @@ const DetailedSummary = () => {
     }
   };
 
-  const handleMonthChange = (event) => {
-    setSelectedMonth(event.target.value);
-  };
+  /* ------------------------------------------------------------------ */
+  /*  Handlers                                                          */
+  /* ------------------------------------------------------------------ */
+  const handleMonthChange = (e) => setSelectedMonth(e.target.value);
+  const handleRoleChange = (e) => setSelectedRole(e.target.value);
+  const handleZoneChange = (e) => setSelectedZone(e.target.value); // NEW
 
-  const handleRoleChange = (event) => {
-    setSelectedRole(event.target.value);
-  };
-
-  // Function to export the report to Excel in the desired format
+  /* ------------------------------------------------------------------ */
+  /*  Export to Excel                                                   */
+  /* ------------------------------------------------------------------ */
   const exportToExcel = () => {
     const worksheetData = [];
 
-    // Add headers
+    // Headers: Name, Number, Outlet, Zone + [Day 1 In/Out, Day 2 In/Out, ...]
     const headers = ["Name", "Number", "Outlet", "Zone"];
     for (let day = 1; day <= dayCount; day++) {
       headers.push(day);
-      headers.push(""); // Empty cell for merged "In" and "Out"
+      headers.push("");
     }
     worksheetData.push(headers);
 
-    // Add sub-headers for "In" and "Out"
+    // Sub-headers: In / Out under each day
     const subHeaders = ["", "", "", ""];
     for (let day = 1; day <= dayCount; day++) {
       subHeaders.push("In", "Out");
     }
     worksheetData.push(subHeaders);
 
-    // Add employee data
+    // Employee rows
     reports.forEach((report) => {
       const row = [report.username, report.number, report.outlet, report.zone];
       for (let day = 1; day <= dayCount; day++) {
@@ -187,26 +224,26 @@ const DetailedSummary = () => {
       worksheetData.push(row);
     });
 
-    // Create worksheet
     const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
 
-    // Merge date headers
+    // Merge day headers (e.g., "1" spans In/Out columns)
     for (let day = 1; day <= dayCount; day++) {
       const startCol = 4 + (day - 1) * 2;
-      const endCol = startCol + 1;
       worksheet["!merges"] = worksheet["!merges"] || [];
       worksheet["!merges"].push({
         s: { r: 0, c: startCol },
-        e: { r: 0, c: endCol },
+        e: { r: 0, c: startCol + 1 },
       });
     }
 
-    // Create workbook and trigger download
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Monthly Report");
-    XLSX.writeFile(workbook, `Monthly_Report_${selectedMonth}.xlsx`);
+    XLSX.writeFile(workbook, `Monthly_Detailed_Report_${selectedMonth}.xlsx`);
   };
 
+  /* ------------------------------------------------------------------ */
+  /*  Render                                                            */
+  /* ------------------------------------------------------------------ */
   return (
     <div className="flex">
       {/* Side Drawer */}
@@ -221,7 +258,7 @@ const DetailedSummary = () => {
             onClick={() => setIsDrawerOpen(false)}
             className="text-white md:hidden focus:outline-none"
           >
-            ✕
+            X
           </button>
         </div>
         <nav className="flex flex-col p-4 space-y-2">
@@ -279,7 +316,9 @@ const DetailedSummary = () => {
           Export Report
         </button>
 
-        <div className="mb-4 flex items-center space-x-4">
+        {/* Filters */}
+        <div className="mb-4 flex flex-wrap items-center gap-4">
+          {/* Month */}
           <div>
             <label className="mr-2 font-semibold">Select Month:</label>
             <input
@@ -289,6 +328,8 @@ const DetailedSummary = () => {
               className="border rounded px-2 py-1"
             />
           </div>
+
+          {/* Group (super admin only) */}
           {storedUser?.role === "super admin" && (
             <div>
               <label className="mr-2 font-semibold">Filter by Group:</label>
@@ -297,14 +338,13 @@ const DetailedSummary = () => {
                 onChange={(e) => setGroup(e.target.value)}
                 className="border rounded px-2 py-1"
               >
-                {/* <option value="NMT">NMT</option>
-                <option value="AMD">AMD</option>
-                <option value="GVI">GVI</option> */}
                 <option value="RL">RL</option>
+                {/* Add more groups if needed */}
               </select>
             </div>
           )}
 
+          {/* Role */}
           <div>
             <label className="mr-2 font-semibold">Filter by User Role:</label>
             <select
@@ -318,22 +358,40 @@ const DetailedSummary = () => {
               {storedUser?.role === "super admin" && (
                 <option value="super admin">Super Admin</option>
               )}
-              {(storedUser?.role === "super admin" ||
-                storedUser?.role === "RSM") && <option value="RSM">RSM</option>}
-
+              {(storedUser?.role === "super admin" || storedUser?.role === "RSM") && (
+                <option value="RSM">RSM</option>
+              )}
               {(storedUser?.role === "super admin" ||
                 storedUser?.role === "RSM" ||
                 storedUser?.role === "TSO") && <option value="TSO">TSO</option>}
-
               {(storedUser?.role === "super admin" ||
                 storedUser?.role === "RSM" ||
                 storedUser?.role === "ASM") && <option value="ASM">ASM</option>}
-
               <option value="SO">SO</option>
             </select>
           </div>
+
+          {/* NEW: Zone Filter (super admin only) */}
+          {storedUser?.role === "super admin" && (
+            <div>
+              <label className="mr-2 font-semibold">Filter by Zone:</label>
+              <select
+                value={selectedZone}
+                onChange={handleZoneChange}
+                className="border rounded px-2 py-1"
+              >
+                <option value="">All Zones</option>
+                {zones.map((z) => (
+                  <option key={z} value={z}>
+                    {z}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
+        {/* Table / Loading / Error */}
         {loading ? (
           <p>Loading...</p>
         ) : error ? (
