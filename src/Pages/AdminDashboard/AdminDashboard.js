@@ -3,6 +3,8 @@ import dayjs from "dayjs";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const AdminDashboard = () => {
   const [reports, setReports] = useState([]);
@@ -236,6 +238,228 @@ const AdminDashboard = () => {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Monthly Report");
     XLSX.writeFile(workbook, `Monthly_Report_${selectedMonth}.xlsx`);
   };
+  /* ------------------------------------------------------------------ */
+  /*  Export to PDF                                                     */
+  /* ------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------ */
+  /*  Export to PDF (Board/HR friendly)                                 */
+  /* ------------------------------------------------------------------ */
+  const exportToPDF = () => {
+    if (!reports || reports.length === 0) return;
+
+    // Create PDF in landscape so table fits
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const marginX = 12;
+    let cursorY = 14;
+
+    /* ============================================================
+     *  HEADER STRIP (Dark bar with title + generated info)
+     * ============================================================ */
+    doc.setFillColor(33, 33, 33); // dark gray/black
+    doc.rect(0, 0, pageWidth, 18, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("Monthly Attendance Report", marginX, 11);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+
+    const headerRightLines = [
+      `Generated: ${dayjs().format("YYYY-MM-DD HH:mm")}`,
+      `User: ${storedUser?.name || storedUser?.username || "-"}`,
+    ];
+
+    headerRightLines.forEach((line, idx) => {
+      doc.text(line, pageWidth - marginX, 7 + idx * 5, { align: "right" });
+    });
+
+    // reset for body
+    doc.setTextColor(0, 0, 0);
+    cursorY = 24;
+
+    /* ============================================================
+     *  REPORT META BOX (filters / summary info)
+     * ============================================================ */
+    const metaBoxHeight = 22;
+    doc.setDrawColor(210, 210, 210);
+    // doc.setFillColor(247, 247, 247);
+    doc.rect(marginX, cursorY, pageWidth - marginX * 2, metaBoxHeight, "F");
+
+    // left column text
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Report Details", marginX + 4, cursorY + 7);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+
+    const leftMetaLines = [
+      `Month: ${selectedMonth}`,
+      `Working Days (Office): ${
+        totalWorkingDays !== null ? totalWorkingDays : "-"
+      }`,
+      `Total Employees: ${reports.length}`,
+    ];
+
+    const rightMetaLines =
+      storedUser?.role === "super admin"
+        ? [
+            `Group: ${group || "All"}`,
+            `Role Filter: ${selectedRole}`,
+            `Zone Filter: ${selectedZone || "All Zones"}`,
+          ]
+        : [
+            `Your Role: ${selectedRole}`,
+            `Your Zone: ${storedUser?.zone || "-"}`,
+          ];
+
+    // render left block
+    let lY = cursorY + 13;
+    leftMetaLines.forEach((line) => {
+      doc.text(line, marginX + 4, lY);
+      lY += 5;
+    });
+
+    // render right block (aligned along right inside the box)
+    let rY = cursorY + 13;
+    rightMetaLines.forEach((line) => {
+      doc.text(pageWidth - marginX - 4, rY, line, { align: "right" });
+      rY += 5;
+    });
+
+    cursorY += metaBoxHeight + 10;
+
+    /* ============================================================
+     *  TABLE DATA
+     * ============================================================ */
+
+    // Define table header
+    const headRow = [
+      "Name",
+      "Role",
+      "Zone",
+      "Working Days",
+      "Holidays",
+      "Approved Leave",
+      "Absent",
+      "Extra Day",
+      "Total Check-Ins",
+      "Late In (10:15 AM)",
+      "Late Out (8:00 PM)",
+      "Late Adj.",
+    ];
+
+    // Build table rows from reports
+    const bodyRows = reports.map((report) => {
+      const holidays =
+        dayCount -
+        totalWorkingDays -
+        (report.totalCheckIns - totalWorkingDays > 0
+          ? report.totalCheckIns - totalWorkingDays
+          : 0);
+
+      const absentCalc =
+        totalWorkingDays - report.totalCheckIns - report.approvedLeaves > 0
+          ? totalWorkingDays - report.totalCheckIns - report.approvedLeaves
+          : 0;
+
+      const extraDayCalc =
+        report.totalCheckIns - totalWorkingDays > 0
+          ? report.totalCheckIns - totalWorkingDays
+          : 0;
+
+      const lateAdj = report.lateCheckIns - report.lateCheckOuts;
+
+      return [
+        report.username || "",
+        report.role || "",
+        report.zone || "",
+        totalWorkingDays ?? "-",
+        holidays ?? 0,
+        report.approvedLeaves ?? 0,
+        absentCalc ?? 0,
+        extraDayCalc ?? 0,
+        report.totalCheckIns ?? 0,
+        report.lateCheckIns ?? 0,
+        report.lateCheckOuts ?? 0,
+        lateAdj ?? 0,
+      ];
+    });
+
+    /* ============================================================
+     *  RENDER TABLE USING autoTable
+     * ============================================================ */
+    autoTable(doc, {
+      startY: cursorY,
+      head: [headRow],
+      body: bodyRows,
+      styles: {
+        font: "helvetica",
+        fontSize: 8,
+        cellPadding: 2,
+        valign: "middle",
+        lineColor: [220, 220, 220],
+        lineWidth: 0.2,
+      },
+      headStyles: {
+        fontStyle: "bold",
+        fillColor: [30, 41, 59], // dark slate
+        textColor: 255,
+      },
+      // columnStyles controls sizing & alignment for each column index
+      columnStyles: {
+        0: { cellWidth: 32, halign: "left" }, // Name
+        1: { cellWidth: 18, halign: "center" }, // Role
+        2: { cellWidth: 18, halign: "center" }, // Zone
+
+        // All numeric columns from here are CENTER aligned
+        3: { cellWidth: 20, halign: "center" }, // Working Days
+        4: { cellWidth: 18, halign: "center" }, // Holidays
+        5: { cellWidth: 24, halign: "center" }, // Approved Leave
+        6: { cellWidth: 18, halign: "center" }, // Absent
+        7: { cellWidth: 20, halign: "center" }, // Extra Day
+        8: { cellWidth: 22, halign: "center" }, // Total Check-Ins
+        9: { cellWidth: 22, halign: "center" }, // Late In
+        10: { cellWidth: 22, halign: "center" }, // Late Out
+        11: { cellWidth: 18, halign: "center" }, // Late Adj.
+      },
+      didDrawPage: (data) => {
+        // Footer for every page
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const pageNum = doc.internal.getNumberOfPages();
+
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+
+        // left footer text
+        doc.text(`Confidential HR Document`, marginX, pageHeight - 6);
+
+        // right footer text: page X of Y
+        doc.text(
+          `Page ${data.pageNumber} of ${pageNum}`,
+          pageWidth - marginX,
+          pageHeight - 6,
+          { align: "right" }
+        );
+
+        // reset text color for safety
+        doc.setTextColor(0, 0, 0);
+      },
+    });
+
+    /* ============================================================
+     *  SAVE
+     * ============================================================ */
+    doc.save(`Monthly_Attendance_${selectedMonth}.pdf`);
+  };
 
   /* ------------------------------------------------------------------ */
   /*  Render                                                            */
@@ -305,12 +529,21 @@ const AdminDashboard = () => {
         <h1 className="text-xl font-bold mb-4">Monthly Attendance Report</h1>
 
         {/* Export Button */}
-        <button
-          onClick={exportToExcel}
-          className="mb-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-        >
-          Export Report
-        </button>
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            onClick={exportToExcel}
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          >
+            Export Excel
+          </button>
+
+          <button
+            onClick={exportToPDF}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Export PDF
+          </button>
+        </div>
 
         {/* ---------- Filters ---------- */}
         <div className="mb-4 flex flex-wrap items-center gap-4">
