@@ -34,16 +34,16 @@ const UserDashboard = () => {
     try {
       const [year, monthNumber] = month.split("-");
       const userResponse = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/getUser/${storedUser?._id}`
+        `http://175.29.181.245:11000/getUser/${storedUser?._id}`,
       );
       setUserName(userResponse.data.name);
 
       // Fetch check-ins
       const checkInsResponse = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/api/checkins/${storedUser?._id}`,
+        `http://175.29.181.245:11000/api/checkins/${storedUser?._id}`,
         {
           params: { month: monthNumber, year: year },
-        }
+        },
       );
       const checkIns = checkInsResponse.data;
 
@@ -51,14 +51,14 @@ const UserDashboard = () => {
 
       // Fetch check-outs
       const checkOutsResponse = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/api/checkouts/${storedUser?._id}`,
+        `http://175.29.181.245:11000/api/checkouts/${storedUser?._id}`,
         {
           params: { month: monthNumber, year: year },
-        }
+        },
       );
       const checkOuts = checkOutsResponse.data;
       const lateCheckOutsCount = checkOuts.filter(
-        (checkin) => checkin.status === "Overtime"
+        (checkin) => checkin.status === "Overtime",
       ).length;
       setLateCheckIn(Late.length);
 
@@ -67,7 +67,7 @@ const UserDashboard = () => {
         const checkOut = checkOuts.find(
           (co) =>
             dayjs(co.time).isSame(checkIn.time, "day") &&
-            dayjs(co.time).isAfter(checkIn.time) // Ensure check-out time is after check-in time
+            dayjs(co.time).isAfter(checkIn.time), // Ensure check-out time is after check-in time
         );
         return {
           date: dayjs(checkIn?.time).format("DD MMMM YYYY"),
@@ -92,17 +92,17 @@ const UserDashboard = () => {
     const [year, month] = monthNumber.split("-");
     try {
       const response = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/api/leave-requests/user/${storedUser?._id}/monthly`,
+        `http://175.29.181.245:11000/api/leave-requests/user/${storedUser?._id}/monthly`,
         {
           params: { month, year },
-        }
+        },
       );
       const { leaveDays } = response.data;
       setApproveLeave(leaveDays || 0);
     } catch (error) {
       console.error(
         `Error fetching approved leaves for user ${storedUser?._id}:`,
-        error
+        error,
       );
     }
   };
@@ -110,10 +110,10 @@ const UserDashboard = () => {
   const fetchWorkingDays = async (month) => {
     try {
       const response = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/api/workingdays`,
+        `http://175.29.181.245:11000/api/workingdays`,
         {
           params: { month },
-        }
+        },
       );
       const { workingDays } = response.data;
       setTotalWorkingDays(workingDays);

@@ -33,21 +33,21 @@ const ViewReport = () => {
     try {
       const [year, monthNumber] = month.split("-");
       const userResponse = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/getUser/${userId}`
+        `http://175.29.181.245:11000/getUser/${userId}`,
       );
       setUserName(userResponse.data.name);
 
       const checkInsResponse = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/api/checkins/${userId}`,
+        `http://175.29.181.245:11000/api/checkins/${userId}`,
         {
           params: { month: monthNumber, year: year },
-        }
+        },
       );
       const checkOutsResponse = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/api/checkouts/${userId}`,
+        `http://175.29.181.245:11000/api/checkouts/${userId}`,
         {
           params: { month: monthNumber, year: year },
-        }
+        },
       );
 
       const checkIns = checkInsResponse.data;
@@ -57,7 +57,7 @@ const ViewReport = () => {
         const checkOut = checkOuts.find(
           (co) =>
             dayjs(co.time).isSame(checkIn.time, "day") &&
-            dayjs(co.time).isAfter(checkIn.time)
+            dayjs(co.time).isAfter(checkIn.time),
         );
 
         return {
@@ -104,8 +104,8 @@ const ViewReport = () => {
 
     try {
       const response = await axios.put(
-        `https://attendance-app-server-blue.vercel.app/api/update-status/${checkInId}`,
-        { status: newStatus }
+        `http://175.29.181.245:11000/api/update-status/${checkInId}`,
+        { status: newStatus },
       );
 
       toast.success(response.data.message);
@@ -113,8 +113,8 @@ const ViewReport = () => {
         prevReports.map((report) =>
           report.checkInId === checkInId
             ? { ...report, status: newStatus }
-            : report
-        )
+            : report,
+        ),
       );
     } catch (error) {
       console.error("Error updating status:", error);
@@ -160,12 +160,37 @@ const ViewReport = () => {
           </button>
         </div>
         <nav className="flex flex-col p-4 space-y-2">
-          <Link to="/admin/today-report" className="hover:bg-gray-700 px-4 py-2 rounded">Today's Report</Link>
-          <Link to="/admin/monthly-summary" className="hover:bg-gray-700 px-4 py-2 rounded">Monthly Summary</Link>
-          <Link to="/admin/monthly-details" className="hover:bg-gray-700 px-4 py-2 rounded">Monthly Details</Link>
-          <Link to="/admin/applications" className="hover:bg-gray-700 px-4 py-2 rounded">Leave Requests</Link>
+          <Link
+            to="/admin/today-report"
+            className="hover:bg-gray-700 px-4 py-2 rounded"
+          >
+            Today's Report
+          </Link>
+          <Link
+            to="/admin/monthly-summary"
+            className="hover:bg-gray-700 px-4 py-2 rounded"
+          >
+            Monthly Summary
+          </Link>
+          <Link
+            to="/admin/monthly-details"
+            className="hover:bg-gray-700 px-4 py-2 rounded"
+          >
+            Monthly Details
+          </Link>
+          <Link
+            to="/admin/applications"
+            className="hover:bg-gray-700 px-4 py-2 rounded"
+          >
+            Leave Requests
+          </Link>
           {storedUser?.role === "super admin" && (
-            <Link to="/admin/user" className="hover:bg-gray-700 px-4 py-2 rounded">Users</Link>
+            <Link
+              to="/admin/user"
+              className="hover:bg-gray-700 px-4 py-2 rounded"
+            >
+              Users
+            </Link>
           )}
         </nav>
       </div>
@@ -179,7 +204,9 @@ const ViewReport = () => {
           {isDrawerOpen ? "Close Menu" : "Open Menu"}
         </button>
 
-        <h1 className="text-xl font-bold mb-4">Monthly Report for {userName}</h1>
+        <h1 className="text-xl font-bold mb-4">
+          Monthly Report for {userName}
+        </h1>
 
         <div className="flex flex-wrap gap-4 mb-4 items-center">
           <div>
@@ -228,17 +255,23 @@ const ViewReport = () => {
                     <td className="border px-4 py-2">{record.date}</td>
                     <td className="border px-4 py-2">{record.checkInTime}</td>
                     <td className="border px-4 py-2">{record.checkInNote}</td>
-                    <td className="border px-4 py-2">{record.checkInLocation}</td>
+                    <td className="border px-4 py-2">
+                      {record.checkInLocation}
+                    </td>
                     <td className="border px-4 py-2">{record.checkOutTime}</td>
                     <td className="border px-4 py-2">{record.checkOutNote}</td>
-                    <td className="border px-4 py-2">{record.checkOutLocation}</td>
+                    <td className="border px-4 py-2">
+                      {record.checkOutLocation}
+                    </td>
                     <td
                       className={`border font-bold px-4 py-2 ${
                         record.status === "Pending"
                           ? "text-[#002B54]"
-                          : ["Rejected", "Late", "Absent"].includes(record.status)
-                          ? "text-[#B7050E]"
-                          : "text-[#0DC143]"
+                          : ["Rejected", "Late", "Absent"].includes(
+                                record.status,
+                              )
+                            ? "text-[#B7050E]"
+                            : "text-[#0DC143]"
                       }`}
                     >
                       {record.status}

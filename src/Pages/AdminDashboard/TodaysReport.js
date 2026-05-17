@@ -15,7 +15,7 @@ const TodaysReport = () => {
   const [zone, setZone] = useState("");
   const [group, setGroup] = useState("RL");
   const [selectedDate, setSelectedDate] = useState(
-    dayjs().format("YYYY-MM-DD")
+    dayjs().format("YYYY-MM-DD"),
   );
   const [selectedRole, setSelectedRole] = useState("SO");
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ const TodaysReport = () => {
       selectedDate,
       selectedRole,
       storedUser.group || (selectedRole === "super admin" ? "" : group),
-      storedUser.zone || (selectedRole === "super admin" ? "" : zone)
+      storedUser.zone || (selectedRole === "super admin" ? "" : zone),
     );
   }, [selectedDate, selectedRole, group, zone]);
 
@@ -41,23 +41,23 @@ const TodaysReport = () => {
     setError(null);
     try {
       const usersResponse = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/getAllUser`,
+        `http://175.29.181.245:11000/getAllUser`,
         {
           params: { role, group, zone }, // Include group and zone as query parameters
-        }
+        },
       );
       const users = usersResponse.data;
 
       const reportsData = await Promise.all(
         users.map(async (user) => {
           const checkInsResponse = await axios.get(
-            `https://attendance-app-server-blue.vercel.app/api/checkins/${user._id}`,
-            { params: { date } }
+            `http://175.29.181.245:11000/api/checkins/${user._id}`,
+            { params: { date } },
           );
 
           const checkOutsResponse = await axios.get(
-            `https://attendance-app-server-blue.vercel.app/api/checkouts/${user._id}`,
-            { params: { date } }
+            `http://175.29.181.245:11000/api/checkouts/${user._id}`,
+            { params: { date } },
           );
 
           const checkIns = checkInsResponse.data;
@@ -68,11 +68,11 @@ const TodaysReport = () => {
           }
 
           const latestCheckIn = checkIns.find((checkin) =>
-            dayjs(checkin.time).isBefore(dayjs(date).endOf("day"))
+            dayjs(checkin.time).isBefore(dayjs(date).endOf("day")),
           );
 
           const latestCheckOut = checkOuts.find((checkout) =>
-            dayjs(checkout.time).isAfter(dayjs(latestCheckIn.time))
+            dayjs(checkout.time).isAfter(dayjs(latestCheckIn.time)),
           );
 
           let totalWorkTime = "N/A";
@@ -104,7 +104,7 @@ const TodaysReport = () => {
             checkInId: latestCheckIn?._id || "",
             checkOutId: latestCheckOut?._id || "",
           };
-        })
+        }),
       );
 
       setTodaysReports(reportsData.filter((report) => report !== null));
@@ -129,16 +129,18 @@ const TodaysReport = () => {
       if (!newStatus) return;
 
       await axios.put(
-        `https://attendance-app-server-blue.vercel.app/api/update-status/${reportId}`,
-        { status: newStatus }
+        `http://175.29.181.245:11000/api/update-status/${reportId}`,
+        {
+          status: newStatus,
+        },
       );
 
       setTodaysReports((prevReports) =>
         prevReports.map((report) =>
           report.checkInId === reportId
             ? { ...report, status: newStatus }
-            : report
-        )
+            : report,
+        ),
       );
       toast.success("Status updated successfully");
     } catch (error) {
@@ -445,10 +447,10 @@ const TodaysReport = () => {
                         report.status === "Pending"
                           ? "text-[#002B54]"
                           : report.status === "Rejected" ||
-                            report.status === "Late" ||
-                            report.status === "Absent"
-                          ? "text-[#B7050E]"
-                          : "text-[#0DC143]"
+                              report.status === "Late" ||
+                              report.status === "Absent"
+                            ? "text-[#B7050E]"
+                            : "text-[#0DC143]"
                       }`}
                     >
                       {report.status}

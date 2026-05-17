@@ -74,7 +74,7 @@ const CheckInPage = () => {
           try {
             console.log("Fetching location from IPInfo.io...");
             const res = await axios.get(
-              "https://ipinfo.io/json?token=6cc3a1d32d5129"
+              "https://ipinfo.io/json?token=6cc3a1d32d5129",
             );
             const [latitude, longitude] = res.data.loc.split(",");
             resolve({ latitude, longitude });
@@ -91,7 +91,7 @@ const CheckInPage = () => {
           enableHighAccuracy: true,
           timeout: 30000,
           maximumAge: 0,
-        }
+        },
       );
     });
   };
@@ -215,7 +215,7 @@ const CheckInPage = () => {
       try {
         const response = await axios.post(
           `https://api.cloudinary.com/v1_1/dkjur8lgg/image/upload`, // Replace with your Cloudinary cloud name
-          formData
+          formData,
         );
         const imageUrl = response.data.secure_url; // Cloudinary returns image URL under 'secure_url'
         setImage(imageUrl);
@@ -256,18 +256,15 @@ const CheckInPage = () => {
         : "Success";
 
     try {
-      const response = await axios.post(
-        "https://attendance-app-server-blue.vercel.app/checkin",
-        {
-          userId: user?._id,
-          note,
-          image,
-          time: checkInTime,
-          date: dayjs().tz("Asia/Dhaka").format("YYYY-MM-DD"),
-          status,
-          location,
-        }
-      );
+      const response = await axios.post("http://175.29.181.245:11000/checkin", {
+        userId: user?._id,
+        note,
+        image,
+        time: checkInTime,
+        date: dayjs().tz("Asia/Dhaka").format("YYYY-MM-DD"),
+        status,
+        location,
+      });
 
       user.checkIn = true;
       localStorage.setItem("user", JSON.stringify(user));
@@ -276,7 +273,7 @@ const CheckInPage = () => {
       navigate("/home");
     } catch (error) {
       toast.error(
-        error.response ? error.response.data.message : "Error during check-in"
+        error.response ? error.response.data.message : "Error during check-in",
       );
     } finally {
       setLoading(false);
@@ -300,7 +297,7 @@ const CheckInPage = () => {
 
     try {
       const response = await axios.post(
-        "https://attendance-app-server-blue.vercel.app/checkout",
+        "http://175.29.181.245:11000/checkout",
         {
           userId: user?._id,
           note,
@@ -309,7 +306,7 @@ const CheckInPage = () => {
           date: dayjs().tz("Asia/Dhaka").format("YYYY-MM-DD"),
           status,
           location,
-        }
+        },
       );
 
       user.checkIn = false;
@@ -319,7 +316,7 @@ const CheckInPage = () => {
       navigate("/home");
     } catch (error) {
       toast.error(
-        error.response ? error.response.data.message : "Error during check-out"
+        error.response ? error.response.data.message : "Error during check-out",
       );
     } finally {
       setLoading(false);
@@ -362,7 +359,7 @@ const CheckInPage = () => {
             handleCapture(
               user && user?.checkIn
                 ? "298f5e5e4cf128214b10f6e42ad1d13d"
-                : "58b59687dc8d48ee7b4692389deb74ff"
+                : "58b59687dc8d48ee7b4692389deb74ff",
             )
           }
           className="w-full mt-4 bg-[#002B54] text-white py-2 rounded-lg"

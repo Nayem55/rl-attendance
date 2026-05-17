@@ -36,7 +36,7 @@ const UserManagementPage = () => {
     setLoading(true);
     try {
       const { data } = await axios.get(
-        "https://attendance-app-server-blue.vercel.app/getAllUser"
+        "http://175.29.181.245:11000/getAllUser",
       );
       setUsers(data);
     } catch (err) {
@@ -54,10 +54,7 @@ const UserManagementPage = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post(
-        "https://attendance-app-server-blue.vercel.app/api/users",
-        newUser
-      );
+      await axios.post("http://175.29.181.245:11000/api/users", newUser);
       toast.success("User created successfully!");
       setNewUser({
         name: "",
@@ -86,9 +83,7 @@ const UserManagementPage = () => {
     if (!window.confirm("Are you sure you want to delete this user?")) return;
 
     try {
-      await axios.delete(
-        `https://attendance-app-server-blue.vercel.app/api/users/${userId}`
-      );
+      await axios.delete(`http://175.29.181.245:11000/api/users/${userId}`);
       toast.success("User deleted");
       fetchUsers();
     } catch (err) {
@@ -104,8 +99,8 @@ const UserManagementPage = () => {
     setLoading(true);
     try {
       await axios.put(
-        `https://attendance-app-server-blue.vercel.app/updateUser/${updateUser._id}`,
-        updateUser
+        `http://175.29.181.245:11000/updateUser/${updateUser._id}`,
+        updateUser,
       );
       toast.success("User updated");
       setUpdateUser(null);
@@ -136,7 +131,9 @@ const UserManagementPage = () => {
 
   // Get unique zones for the dropdown (only from RL users)
   const availableZones = useMemo(() => {
-    const zones = [...new Set(users.filter((u) => u.group === "RL").map((u) => u.zone))];
+    const zones = [
+      ...new Set(users.filter((u) => u.group === "RL").map((u) => u.zone)),
+    ];
     return zones.filter(Boolean).sort();
   }, [users]);
 
@@ -158,19 +155,34 @@ const UserManagementPage = () => {
           </button>
         </div>
         <nav className="flex flex-col p-4 space-y-2">
-          <Link to="/admin/today-report" className="px-4 py-2 rounded hover:bg-gray-700">
+          <Link
+            to="/admin/today-report"
+            className="px-4 py-2 rounded hover:bg-gray-700"
+          >
             Today's Report
           </Link>
-          <Link to="/admin/monthly-summary" className="px-4 py-2 rounded hover:bg-gray-700">
+          <Link
+            to="/admin/monthly-summary"
+            className="px-4 py-2 rounded hover:bg-gray-700"
+          >
             Monthly Summary
           </Link>
-          <Link to="/admin/monthly-details" className="px-4 py-2 rounded hover:bg-gray-700">
+          <Link
+            to="/admin/monthly-details"
+            className="px-4 py-2 rounded hover:bg-gray-700"
+          >
             Monthly Details
           </Link>
-          <Link to="/admin/applications" className="px-4 py-2 rounded hover:bg-gray-700">
+          <Link
+            to="/admin/applications"
+            className="px-4 py-2 rounded hover:bg-gray-700"
+          >
             Leave Requests
           </Link>
-          <Link to="/admin/user" className="px-4 py-2 rounded hover:bg-gray-700 bg-gray-700">
+          <Link
+            to="/admin/user"
+            className="px-4 py-2 rounded hover:bg-gray-700 bg-gray-700"
+          >
             Users
           </Link>
         </nav>
@@ -225,19 +237,40 @@ const UserManagementPage = () => {
 
         {/* ---------- Add User Form ---------- */}
         {isAddUserVisible && (
-          <form onSubmit={handleCreateUser} className="bg-white p-6 rounded shadow-md mb-8">
+          <form
+            onSubmit={handleCreateUser}
+            className="bg-white p-6 rounded shadow-md mb-8"
+          >
             <h2 className="text-xl font-bold mb-4">Add New User (RL)</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {["name", "email", "number", "password", "role", "zone", "outlet"].map((field) => (
+              {[
+                "name",
+                "email",
+                "number",
+                "password",
+                "role",
+                "zone",
+                "outlet",
+              ].map((field) => (
                 <div key={field}>
                   <label className="block text-sm font-semibold capitalize mb-1">
                     {field === "number" ? "Phone Number" : field}
                   </label>
                   <input
-                    type={field === "email" ? "email" : field === "password" ? "password" : "text"}
+                    type={
+                      field === "email"
+                        ? "email"
+                        : field === "password"
+                          ? "password"
+                          : "text"
+                    }
                     value={newUser[field]}
-                    onChange={(e) => setNewUser({ ...newUser, [field]: e.target.value })}
-                    required={["name", "number", "password", "role"].includes(field)}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, [field]: e.target.value })
+                    }
+                    required={["name", "number", "password", "role"].includes(
+                      field,
+                    )}
                     className="w-full p-2 border rounded"
                   />
                 </div>
@@ -260,7 +293,8 @@ const UserManagementPage = () => {
           ) : (
             <>
               <div className="p-4 font-semibold text-gray-700">
-                Showing {filteredUsers.length} user{filteredUsers.length !== 1 && "s"}
+                Showing {filteredUsers.length} user
+                {filteredUsers.length !== 1 && "s"}
                 {zoneFilter && ` in zone "${zoneFilter}"`}
               </div>
               <table className="w-full table-auto">
@@ -278,8 +312,12 @@ const UserManagementPage = () => {
                 <tbody>
                   {filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="text-center py-8 text-gray-500">
-                        No RL users found {zoneFilter && `for zone "${zoneFilter}"`}
+                      <td
+                        colSpan="7"
+                        className="text-center py-8 text-gray-500"
+                      >
+                        No RL users found{" "}
+                        {zoneFilter && `for zone "${zoneFilter}"`}
                       </td>
                     </tr>
                   ) : (
@@ -321,16 +359,33 @@ const UserManagementPage = () => {
               <h2 className="text-xl font-bold mb-4">Update User</h2>
               <form onSubmit={handleUpdateUser}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {["name", "email", "number", "password", "role", "zone", "outlet"].map((field) => (
+                  {[
+                    "name",
+                    "email",
+                    "number",
+                    "password",
+                    "role",
+                    "zone",
+                    "outlet",
+                  ].map((field) => (
                     <div key={field}>
                       <label className="block text-sm font-semibold capitalize mb-1">
                         {field === "number" ? "Phone Number" : field}
                       </label>
                       <input
-                        type={field === "email" ? "email" : field === "password" ? "password" : "text"}
+                        type={
+                          field === "email"
+                            ? "email"
+                            : field === "password"
+                              ? "password"
+                              : "text"
+                        }
                         value={updateUser[field] || ""}
                         onChange={(e) =>
-                          setUpdateUser({ ...updateUser, [field]: e.target.value })
+                          setUpdateUser({
+                            ...updateUser,
+                            [field]: e.target.value,
+                          })
                         }
                         className="w-full p-2 border rounded"
                       />

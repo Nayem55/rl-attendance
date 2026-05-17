@@ -11,7 +11,7 @@ const HistoryPage = () => {
     const fetchHistory = async () => {
       try {
         const response = await axios.get(
-          `https://attendance-app-server-blue.vercel.app/api/leave-requests/user/${user._id}`
+          `http://175.29.181.245:11000/api/leave-requests/user/${user._id}`,
         );
 
         setLeaveHistory(response.data || []);
@@ -65,11 +65,12 @@ const HistoryPage = () => {
                       request.status === "approved"
                         ? "text-green-600"
                         : request.status === "rejected"
-                        ? "text-red-600"
-                        : "text-yellow-600"
+                          ? "text-red-600"
+                          : "text-yellow-600"
                     }`}
                   >
-                    {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                    {request.status.charAt(0).toUpperCase() +
+                      request.status.slice(1)}
                   </td>
                   <td className="p-3 whitespace-nowrap">
                     {new Date(request.createdAt).toLocaleDateString()}

@@ -41,7 +41,7 @@ const AdminDashboard = () => {
       selectedRole,
       storedUser.group || (selectedRole === "super admin" ? "" : group),
       storedUser.zone,
-      selectedZone
+      selectedZone,
     );
     fetchPendingRequest();
   }, [selectedMonth, selectedRole, group, selectedZone]); // <-- added selectedZone
@@ -52,16 +52,14 @@ const AdminDashboard = () => {
   useEffect(() => {
     const loadZones = async () => {
       try {
-        const res = await axios.get(
-          `https://attendance-app-server-blue.vercel.app/getAllUser`
-        );
+        const res = await axios.get(`http://175.29.181.245:11000/getAllUser`);
 
         const uniqueZones = [
           ...new Set(
             res.data
               .map((u) => u.zone)
               .filter(Boolean)
-              .filter((z) => /zone/i.test(z)) // <-- ONLY ZONES WITH "zone"
+              .filter((z) => /zone/i.test(z)), // <-- ONLY ZONES WITH "zone"
           ),
         ];
 
@@ -80,7 +78,7 @@ const AdminDashboard = () => {
   const fetchPendingRequest = async () => {
     try {
       const response = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/api/pending-requests`
+        `http://175.29.181.245:11000/api/pending-requests`,
       );
       setPendingReq(response.data.pendingCount);
     } catch (error) {
@@ -92,8 +90,8 @@ const AdminDashboard = () => {
   const fetchWorkingDays = async (month) => {
     try {
       const response = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/api/workingdays`,
-        { params: { month } }
+        `http://175.29.181.245:11000/api/workingdays`,
+        { params: { month } },
       );
       setTotalWorkingDays(response.data.workingDays);
     } catch (error) {
@@ -105,14 +103,14 @@ const AdminDashboard = () => {
   const fetchApprovedLeaves = async (userId, month, year) => {
     try {
       const response = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/api/leave-requests/user/${userId}/monthly`,
-        { params: { month, year } }
+        `http://175.29.181.245:11000/api/leave-requests/user/${userId}/monthly`,
+        { params: { month, year } },
       );
       return response.data.leaveDays || 0;
     } catch (error) {
       console.error(
         `Error fetching approved leaves for user ${userId}:`,
-        error
+        error,
       );
       return 0;
     }
@@ -123,7 +121,7 @@ const AdminDashboard = () => {
     role,
     group,
     userZone,
-    zoneFilter = ""
+    zoneFilter = "",
   ) => {
     setLoading(true);
     setError(null);
@@ -131,26 +129,26 @@ const AdminDashboard = () => {
       const [year, monthNumber] = month.split("-");
 
       const usersResponse = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/getAllUser`,
+        `http://175.29.181.245:11000/getAllUser`,
         {
           params: {
             role,
             group,
             zone: storedUser?.role === "super admin" ? zoneFilter : userZone,
           },
-        }
+        },
       );
       const users = usersResponse.data;
 
       const reportsData = await Promise.all(
         users.map(async (user) => {
           const checkInsResponse = await axios.get(
-            `https://attendance-app-server-blue.vercel.app/api/checkins/${user._id}`,
-            { params: { month: monthNumber, year } }
+            `http://175.29.181.245:11000/api/checkins/${user._id}`,
+            { params: { month: monthNumber, year } },
           );
           const checkOutsResponse = await axios.get(
-            `https://attendance-app-server-blue.vercel.app/api/checkouts/${user._id}`,
-            { params: { month: monthNumber, year } }
+            `http://175.29.181.245:11000/api/checkouts/${user._id}`,
+            { params: { month: monthNumber, year } },
           );
 
           const checkIns = checkInsResponse.data;
@@ -158,16 +156,16 @@ const AdminDashboard = () => {
           const totalCheckIns = checkIns.length;
 
           const lateCheckInsCount = checkIns.filter(
-            (c) => c.status === "Late"
+            (c) => c.status === "Late",
           ).length;
           const lateCheckOutsCount = checkOuts.filter(
-            (c) => c.status === "Overtime"
+            (c) => c.status === "Overtime",
           ).length;
 
           const approvedLeaveDays = await fetchApprovedLeaves(
             user._id,
             monthNumber,
-            year
+            year,
           );
 
           return {
@@ -183,7 +181,7 @@ const AdminDashboard = () => {
             year,
             zone: user.zone,
           };
-        })
+        }),
       );
 
       setReports(reportsData);
@@ -447,7 +445,7 @@ const AdminDashboard = () => {
           `Page ${data.pageNumber} of ${pageNum}`,
           pageWidth - marginX,
           pageHeight - 6,
-          { align: "right" }
+          { align: "right" },
         );
 
         // reset text color for safety

@@ -8,11 +8,11 @@ const Attendance = ({ userId }) => {
   const handleAttendance = async () => {
     try {
       const response = await axios.post(
-        "https://attendance-app-server-blue.vercel.app/attendance",
+        "http://175.29.181.245:11000/attendance",
         {
           userId,
           action,
-        }
+        },
       );
 
       setMessage(response.data.message);

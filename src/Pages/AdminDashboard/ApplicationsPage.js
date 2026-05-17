@@ -22,20 +22,19 @@ const ApplicationsPage = () => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/api/leave-requests?year=${year}&month=${month}`
+        `http://175.29.181.245:11000/api/leave-requests?year=${year}&month=${month}`,
       );
 
       if (storedUser?.group && !storedUser?.zone) {
         setApplications(
-          response.data.filter((data) => storedUser.group === data.group) || []
+          response.data.filter((data) => storedUser.group === data.group) || [],
         );
       } else if (storedUser?.group && storedUser?.zone) {
         setApplications(
           response.data.filter(
             (data) =>
-              storedUser.group === data.group &&
-              storedUser.zone === data.zone
-          ) || []
+              storedUser.group === data.group && storedUser.zone === data.zone,
+          ) || [],
         );
       } else {
         setApplications(response.data || []);
@@ -56,14 +55,13 @@ const ApplicationsPage = () => {
 
   const handleStatusChange = async (id, newStatus) => {
     try {
-      await axios.put(
-        `https://attendance-app-server-blue.vercel.app/api/leave-requests/${id}`,
-        { status: newStatus }
-      );
+      await axios.put(`http://175.29.181.245:11000/api/leave-requests/${id}`, {
+        status: newStatus,
+      });
       setApplications((prev) =>
         prev.map((app) =>
-          app._id === id ? { ...app, status: newStatus } : app
-        )
+          app._id === id ? { ...app, status: newStatus } : app,
+        ),
       );
       toast.success("Status updated successfully!");
     } catch (error) {
@@ -78,7 +76,7 @@ const ApplicationsPage = () => {
 
     try {
       await axios.delete(
-        `https://attendance-app-server-blue.vercel.app/api/leave-requests/${id}`
+        `http://175.29.181.245:11000/api/leave-requests/${id}`,
       );
       setApplications((prev) => prev.filter((app) => app._id !== id));
       toast.success("Application deleted successfully!");
@@ -208,8 +206,8 @@ const ApplicationsPage = () => {
                           application.status === "approved"
                             ? "text-green-600"
                             : application.status === "rejected"
-                            ? "text-red-600"
-                            : "text-yellow-600"
+                              ? "text-red-600"
+                              : "text-yellow-600"
                         }`}
                       >
                         <option value="pending">Pending</option>

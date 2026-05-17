@@ -10,8 +10,8 @@ const DetailedSummary = () => {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
   const [selectedRole, setSelectedRole] = useState("SO");
-  const [selectedZone, setSelectedZone] = useState("");   // NEW: Zone filter state
-  const [zones, setZones] = useState([]);                 // NEW: List of zones
+  const [selectedZone, setSelectedZone] = useState(""); // NEW: Zone filter state
+  const [zones, setZones] = useState([]); // NEW: List of zones
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [error, setError] = useState(null);
   const [totalWorkingDays, setTotalWorkingDays] = useState(null);
@@ -39,7 +39,7 @@ const DetailedSummary = () => {
       selectedRole,
       storedUser.group || (selectedRole === "super admin" ? "" : group),
       storedUser.zone,
-      selectedZone
+      selectedZone,
     );
     fetchPendingRequest();
   }, [selectedMonth, selectedRole, group, selectedZone]); // Added selectedZone
@@ -50,16 +50,14 @@ const DetailedSummary = () => {
   useEffect(() => {
     const loadZones = async () => {
       try {
-        const res = await axios.get(
-          `https://attendance-app-server-blue.vercel.app/getAllUser`
-        );
+        const res = await axios.get(`http://175.29.181.245:11000/getAllUser`);
 
         const uniqueZones = [
           ...new Set(
             res.data
               .map((u) => u.zone)
               .filter(Boolean)
-              .filter((z) => /zone/i.test(z)) // Only zones with "zone" in name
+              .filter((z) => /zone/i.test(z)), // Only zones with "zone" in name
           ),
         ];
 
@@ -78,7 +76,7 @@ const DetailedSummary = () => {
   const fetchPendingRequest = async () => {
     try {
       const response = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/api/pending-requests`
+        `http://175.29.181.245:11000/api/pending-requests`,
       );
       setPendingReq(response.data.pendingCount);
     } catch (error) {
@@ -90,8 +88,8 @@ const DetailedSummary = () => {
   const fetchWorkingDays = async (month) => {
     try {
       const response = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/api/workingdays`,
-        { params: { month } }
+        `http://175.29.181.245:11000/api/workingdays`,
+        { params: { month } },
       );
       setTotalWorkingDays(response.data.workingDays);
     } catch (error) {
@@ -103,12 +101,15 @@ const DetailedSummary = () => {
   const fetchApprovedLeaves = async (userId, month, year) => {
     try {
       const response = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/api/leave-requests/user/${userId}/monthly`,
-        { params: { month, year } }
+        `http://175.29.181.245:11000/api/leave-requests/user/${userId}/monthly`,
+        { params: { month, year } },
       );
       return response.data.leaveDays || 0;
     } catch (error) {
-      console.error(`Error fetching approved leaves for user ${userId}:`, error);
+      console.error(
+        `Error fetching approved leaves for user ${userId}:`,
+        error,
+      );
       return 0;
     }
   };
@@ -118,7 +119,7 @@ const DetailedSummary = () => {
     role,
     group,
     userZone,
-    zoneFilter = ""
+    zoneFilter = "",
   ) => {
     setLoading(true);
     setError(null);
@@ -126,26 +127,26 @@ const DetailedSummary = () => {
       const [year, monthNumber] = month.split("-");
 
       const usersResponse = await axios.get(
-        `https://attendance-app-server-blue.vercel.app/getAllUser`,
+        `http://175.29.181.245:11000/getAllUser`,
         {
           params: {
             role,
             group,
             zone: storedUser?.role === "super admin" ? zoneFilter : userZone,
           },
-        }
+        },
       );
       const users = usersResponse.data;
 
       const reportsData = await Promise.all(
         users.map(async (user) => {
           const checkInsResponse = await axios.get(
-            `https://attendance-app-server-blue.vercel.app/api/checkins/${user._id}`,
-            { params: { month: monthNumber, year } }
+            `http://175.29.181.245:11000/api/checkins/${user._id}`,
+            { params: { month: monthNumber, year } },
           );
           const checkOutsResponse = await axios.get(
-            `https://attendance-app-server-blue.vercel.app/api/checkouts/${user._id}`,
-            { params: { month: monthNumber, year } }
+            `http://175.29.181.245:11000/api/checkouts/${user._id}`,
+            { params: { month: monthNumber, year } },
           );
 
           const checkIns = checkInsResponse.data;
@@ -156,10 +157,10 @@ const DetailedSummary = () => {
           for (let day = 1; day <= dayCount; day++) {
             const date = `${year}-${monthNumber}-${String(day).padStart(2, "0")}`;
             const checkIn = checkIns.find(
-              (c) => dayjs(c.time).format("YYYY-MM-DD") === date
+              (c) => dayjs(c.time).format("YYYY-MM-DD") === date,
             );
             const checkOut = checkOuts.find(
-              (c) => dayjs(c.time).format("YYYY-MM-DD") === date
+              (c) => dayjs(c.time).format("YYYY-MM-DD") === date,
             );
 
             dailyTimes[day] = {
@@ -175,7 +176,7 @@ const DetailedSummary = () => {
             zone: user.zone,
             dailyTimes,
           };
-        })
+        }),
       );
 
       setReports(reportsData);
@@ -358,9 +359,8 @@ const DetailedSummary = () => {
               {storedUser?.role === "super admin" && (
                 <option value="super admin">Super Admin</option>
               )}
-              {(storedUser?.role === "super admin" || storedUser?.role === "RSM") && (
-                <option value="RSM">RSM</option>
-              )}
+              {(storedUser?.role === "super admin" ||
+                storedUser?.role === "RSM") && <option value="RSM">RSM</option>}
               {(storedUser?.role === "super admin" ||
                 storedUser?.role === "RSM" ||
                 storedUser?.role === "TSO") && <option value="TSO">TSO</option>}

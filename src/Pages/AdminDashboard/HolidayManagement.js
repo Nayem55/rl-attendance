@@ -31,7 +31,7 @@ const HolidayPage = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        "https://attendance-app-server-blue.vercel.app/api/holidays"
+        "http://175.29.181.245:11000/api/holidays",
       );
       setHolidays(response.data);
     } catch (error) {
@@ -43,10 +43,7 @@ const HolidayPage = () => {
 
   const addHoliday = async () => {
     try {
-      await axios.post(
-        "https://attendance-app-server-blue.vercel.app/api/holidays",
-        newHoliday
-      );
+      await axios.post("http://175.29.181.245:11000/api/holidays", newHoliday);
       toast.success("Holiday added successfully");
       setNewHoliday({ date: "", name: "" });
       fetchHolidays();
@@ -59,7 +56,7 @@ const HolidayPage = () => {
   const deleteHoliday = async (holidayId) => {
     try {
       await axios.delete(
-        `https://attendance-app-server-blue.vercel.app/api/holidays/${holidayId}`
+        `http://175.29.181.245:11000/api/holidays/${holidayId}`,
       );
       toast.success("Holiday deleted successfully");
       fetchHolidays();
@@ -76,8 +73,8 @@ const HolidayPage = () => {
   const saveHolidayChanges = async () => {
     try {
       await axios.put(
-        `https://attendance-app-server-blue.vercel.app/api/holidays/${editHoliday._id}`,
-        editHoliday
+        `http://175.29.181.245:11000/api/holidays/${editHoliday._id}`,
+        editHoliday,
       );
       toast.success("Holiday updated successfully");
       setEditHoliday(null); // Close modal

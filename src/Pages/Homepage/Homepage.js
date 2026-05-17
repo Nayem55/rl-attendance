@@ -31,14 +31,12 @@ const HomePage = () => {
     try {
       const [userResponse, checkInsResponse, checkOutResponse] =
         await Promise.all([
+          axios.get(`http://175.29.181.245:11000/getUser/${storedUser?._id}`),
           axios.get(
-            `https://attendance-app-server-blue.vercel.app/getUser/${storedUser?._id}`
+            `http://175.29.181.245:11000/api/checkins/${storedUser?._id}?month=${currentMonth}&year=${currentYear}`,
           ),
           axios.get(
-            `https://attendance-app-server-blue.vercel.app/api/checkins/${storedUser?._id}?month=${currentMonth}&year=${currentYear}`
-          ),
-          axios.get(
-            `https://attendance-app-server-blue.vercel.app/api/checkouts/${storedUser?._id}?month=${currentMonth}&year=${currentYear}`
+            `http://175.29.181.245:11000/api/checkouts/${storedUser?._id}?month=${currentMonth}&year=${currentYear}`,
           ),
         ]);
 
@@ -59,15 +57,14 @@ const HomePage = () => {
       //   return checkInTime.isAfter(lateThreshold);
       // }).length;
 
-    
       const lateCheckInsCount = checkins.filter(
-        (checkin) => checkin.status === "Late"
+        (checkin) => checkin.status === "Late",
       ).length;
       const lateCheckOutsCount = checkouts.filter(
-        (checkin) => checkin.status === "Overtime"
+        (checkin) => checkin.status === "Overtime",
       ).length;
       const AbsentCount = checkins.filter(
-        (checkin) => checkin.status === "Absent"
+        (checkin) => checkin.status === "Absent",
       ).length;
 
       setLateCheckIns(lateCheckInsCount);
@@ -120,7 +117,7 @@ const HomePage = () => {
           enableHighAccuracy: true,
           timeout: 10000,
           maximumAge: 0,
-        }
+        },
       );
     });
   };
@@ -183,11 +180,7 @@ const HomePage = () => {
           />
           <SummaryCard
             title={`${currentMonth} Late`}
-            value={
-              dataLoading
-                ? "Calculating..."
-                : `${lateCheckIns} Days`
-            }
+            value={dataLoading ? "Calculating..." : `${lateCheckIns} Days`}
           />
           {/* <SummaryCard
             title={`${currentMonth} Absent`}

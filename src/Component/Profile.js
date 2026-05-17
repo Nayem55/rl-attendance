@@ -27,14 +27,14 @@ const Profile = () => {
     try {
       // Send a PUT request to update the user
       const response = await fetch(
-        `https://attendance-app-server-blue.vercel.app/updateUser/${user?._id}`,
+        `http://175.29.181.245:11000/updateUser/${user?._id}`,
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(updatedUser),
-        }
+        },
       );
 
       if (response.ok) {

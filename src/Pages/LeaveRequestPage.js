@@ -32,13 +32,13 @@ const LeaveRequestPage = () => {
 
     try {
       const response = await axios.post(
-        "https://attendance-app-server-blue.vercel.app/api/leave-requests",
-        leaveData
+        "http://175.29.181.245:11000/api/leave-requests",
+        leaveData,
       );
 
       if (response.status === 201) {
         toast.success(
-          response.data.message || "Leave request submitted successfully!"
+          response.data.message || "Leave request submitted successfully!",
         );
         setLeaveStartDate("");
         setLeaveEndDate("");
@@ -50,11 +50,11 @@ const LeaveRequestPage = () => {
     } catch (error) {
       console.error(
         "Error submitting leave request:",
-        error.response || error.message
+        error.response || error.message,
       );
       toast.error(
         error.response?.data?.message ||
-          "There was an error submitting your request. Please try again."
+          "There was an error submitting your request. Please try again.",
       );
     } finally {
       setLoading(false);

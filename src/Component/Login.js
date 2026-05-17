@@ -25,8 +25,8 @@ const LoginForm = () => {
 
     try {
       const response = await axios.post(
-        "https://attendance-app-server-blue.vercel.app/login",
-        formData
+        "http://175.29.181.245:11000/login",
+        formData,
       );
 
       // Save user information in localStorage
@@ -47,7 +47,7 @@ const LoginForm = () => {
         error.response ? error.response.data.message : "Something went wrong!",
         {
           duration: 3000,
-        }
+        },
       );
 
       setIsLoading(false);
