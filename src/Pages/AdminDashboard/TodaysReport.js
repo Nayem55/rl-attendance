@@ -3,7 +3,9 @@ import dayjs from "dayjs";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import * as XLSX from "xlsx"; // Import the xlsx library
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const TodaysReport = () => {
   const [todaysReports, setTodaysReports] = useState([]);
@@ -181,6 +183,55 @@ const TodaysReport = () => {
     XLSX.writeFile(workbook, `Daily_Report.xlsx`);
   };
 
+  const exportToPDF = () => {
+    const doc = new jsPDF("landscape", "mm", "a4");
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Daily Attendance Report", pageWidth / 2, 15, { align: "center" });
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Date: ${selectedDate}`, 14, 25);
+    doc.text(`Role: ${selectedRole}`, 14, 31);
+    doc.text(`Total Check-ins: ${todaysReports.length}`, 14, 37);
+
+    const tableData = todaysReports.map((report) => [
+      report.username,
+      report.number,
+      report.zone,
+      report.checkInTime,
+      report.checkInLocation,
+      report.checkOutTime,
+      report.checkOutLocation,
+    ]);
+
+    autoTable(doc, {
+      startY: 42,
+      head: [["Username", "Phone", "Zone", "In Time", "In Location", "Out Time", "Out Location"]],
+      body: tableData,
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [31, 41, 55], textColor: [255, 255, 255] },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      margin: { left: 14, right: 14 },
+    });
+
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.text(
+        `Page ${i} of ${pageCount}`,
+        pageWidth / 2,
+        doc.internal.pageSize.getHeight() - 10,
+        { align: "center" },
+      );
+    }
+
+    doc.save(`Daily_Report_${selectedDate}.pdf`);
+  };
+
   return (
     <div className="flex">
       {/* Side Drawer */}
@@ -247,13 +298,21 @@ const TodaysReport = () => {
         <p className="mb-6 font-bold text-[#0DC180]">
           Total Check In : {todaysReports?.length}
         </p>
-        {/* Export Button */}
-        <button
-          onClick={exportToExcel}
-          className="mb-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-        >
-          Export Report
-        </button>
+        {/* Export Buttons */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={exportToExcel}
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          >
+            Export Excel
+          </button>
+          <button
+            onClick={exportToPDF}
+            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+          >
+            Export PDF
+          </button>
+        </div>
 
         <div className="flex gap-10 w-[80%]">
           <div className="mb-4 w-[100%]">
